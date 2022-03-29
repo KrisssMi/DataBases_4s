@@ -20,9 +20,9 @@ select AUDITORIUM.AUDITORIUM, AUDITORIUM_TYPE.AUDITORIUM_TYPE
 from AUDITORIUM_TYPE, AUDITORIUM
 where AUDITORIUM_TYPE.AUDITORIUM_TYPE=AUDITORIUM.AUDITORIUM_TYPE
 
-select T2.AUDITORIUM, T1.AUDITORIUM_TYPENAME		--через псевдонимы
-from AUDITORIUM_TYPE As T1, AUDITORIUM As T2
-where T1.AUDITORIUM_TYPE=T2.AUDITORIUM_TYPE And T1.AUDITORIUM_TYPENAME Like '%компьютер%';
+select T1.AUDITORIUM, T2.AUDITORIUM_TYPENAME						--через псевдонимы
+from AUDITORIUM_TYPE T2, AUDITORIUM T1
+where T2.AUDITORIUM_TYPE=T1.AUDITORIUM_TYPE And T2.AUDITORIUM_TYPENAME Like '%компьютер%';
 
 
 --4
@@ -32,14 +32,15 @@ case
 	when (PROGRESS.NOTE=6) then 'шесть'
 	when (PROGRESS.NOTE=7) then 'семь'
 	when (PROGRESS.NOTE=8) then 'восемь'
-	end [PROGRESS.NOTE] from PROGRESS
+	end [PROGRESS.NOTE]
+	from PROGRESS
 inner join STUDENT on PROGRESS.IDSTUDENT = STUDENT.IDSTUDENT
-inner join [SUBJECT] on [SUBJECT].[SUBJECT] = PROGRESS.[SUBJECT]
+inner join SUBJECT on SUBJECT.SUBJECT = PROGRESS.SUBJECT
 inner join GROUPS on GROUPS.IDGROUP = STUDENT.IDGROUP
 inner join PROFESSION on PROFESSION.PROFESSION = GROUPS.PROFESSION
-inner join PULPIT on PULPIT.PULPIT=[SUBJECT].PULPIT
+inner join PULPIT on PULPIT.PULPIT=SUBJECT.PULPIT
 inner join FACULTY on FACULTY.FACULTY = PULPIT.FACULTY
-where PROGRESS.NOTE between 6 and 8
+	where PROGRESS.NOTE between 6 and 8
 
 /*Результирующий набор отсортировать в порядке возрастания по столбцам FACULTY.FACULTY, PULPIT.PULPIT, PROFESSION.PROFESSION, 
 STUDENT.STUDENT_NAME и в порядке убывания по столбцу PROGRESS.NOTE.*/
@@ -57,10 +58,10 @@ case
 	when (PROGRESS.NOTE=8) then 'восемь'
 	end [PROGRESS.NOTE] from PROGRESS
 inner join STUDENT on PROGRESS.IDSTUDENT = STUDENT.IDSTUDENT
-inner join [SUBJECT] on [SUBJECT].[SUBJECT] = PROGRESS.[SUBJECT]
+inner join SUBJECT on SUBJECT.SUBJECT = PROGRESS.SUBJECT
 inner join GROUPS on GROUPS.IDGROUP = STUDENT.IDGROUP
 inner join PROFESSION on PROFESSION.PROFESSION = GROUPS.PROFESSION
-inner join PULPIT on PULPIT.PULPIT=[SUBJECT].PULPIT
+inner join PULPIT on PULPIT.PULPIT=SUBJECT.PULPIT
 inner join FACULTY on FACULTY.FACULTY = PULPIT.FACULTY
 where PROGRESS.NOTE between 6 and 8
 order by
@@ -73,10 +74,10 @@ order by
 
 --6
 /*полный перечень кафедр (если на кафедре нет преподавателя - ***) */
+--функция isnull возвращает первое значение, не равное NULL.
 select PULPIT.PULPIT_NAME [Кафедра], isnull (TEACHER.TEACHER_NAME, '***') [Преподаватель]
 from PULPIT left outer join TEACHER
 on PULPIT.PULPIT=TEACHER.PULPIT;
-
 
 
 --7(1)
@@ -96,34 +97,50 @@ on PULPIT.PULPIT=TEACHER.PULPIT;
 
 --8(1)
 /*запрос, результат которого содержит данные левой (в операции FULL OUTER JOIN) таблицы и не содержит данные правой; */
-SELECT AUDITORIUM.AUDITORIUM, AUDITORIUM_TYPE.AUDITORIUM_TYPENAME
-	from AUDITORIUM_TYPE full outer Join AUDITORIUM
-	on AUDITORIUM.AUDITORIUM_TYPE = AUDITORIUM_TYPE.AUDITORIUM_TYPE;
+select PULPIT.FACULTY, PULPIT.PULPIT, PULPIT.PULPIT_NAME
+from PULPIT full outer join TEACHER
+on PULPIT.PULPIT = TEACHER.PULPIT
+where TEACHER.TEACHER is null
 
-SELECT AUDITORIUM.AUDITORIUM, AUDITORIUM_TYPE.AUDITORIUM_TYPENAME
-	from AUDITORIUM full outer Join AUDITORIUM_TYPE
-	on AUDITORIUM.AUDITORIUM_TYPE = AUDITORIUM_TYPE.AUDITORIUM_TYPE;
 
 --8(2)
 /*запрос, результат которого содержит данные правой таблицы и не содержащие данные левой; */
-SELECT * FROM AUDITORIUM left OUTER JOIN AUDITORIUM_TYPE
-on AUDITORIUM.AUDITORIUM_TYPE = AUDITORIUM_TYPE.AUDITORIUM_TYPE
-
-SELECT * FROM AUDITORIUM right OUTER JOIN AUDITORIUM_TYPE
-on AUDITORIUM.AUDITORIUM_TYPE = AUDITORIUM_TYPE.AUDITORIUM_TYPE
+select TEACHER.TEACHER_NAME, TEACHER.TEACHER, TEACHER.PULPIT, TEACHER.GENDER
+from PULPIT full outer join TEACHER
+on PULPIT.PULPIT=TEACHER.PULPIT
+where TEACHER.TEACHER is not null
 
 
 --8(3)
 /*запрос, результат которого содержит данные правой таблицы и левой таблиц;*/
-SELECT AUDITORIUM.AUDITORIUM, AUDITORIUM_TYPE.AUDITORIUM_TYPENAME 
-	from AUDITORIUM Inner Join AUDITORIUM_TYPE 
-	on AUDITORIUM.AUDITORIUM_TYPE = AUDITORIUM_TYPE.AUDITORIUM_TYPE;
---inner
-SELECT AUDITORIUM.AUDITORIUM, AUDITORIUM_TYPE.AUDITORIUM_TYPENAME 
-	from AUDITORIUM full outer Join AUDITORIUM_TYPE 
-	on AUDITORIUM.AUDITORIUM_TYPE = AUDITORIUM_TYPE.AUDITORIUM_TYPE;
+select * from TEACHER full outer join PULPIT
+on PULPIT.PULPIT = TEACHER.PULPIT
 --full включает inner
 
+
+--ДОКАЗАТЕЛЬСТВО:
+
+--соединение FULL OUTER JOIN двух таблиц является коммутативной операцией
+select NAME, YEAR_FIRST from STUDENT full outer join GROUPS G on STUDENT.IDGROUP = G.IDGROUP
+except
+select NAME, YEAR_FIRST from GROUPS full outer join STUDENT S on GROUPS.IDGROUP = S.IDGROUP
+
+
+--является объединением LEFT OUTER JOIN и RIGHT OUTER JOIN соединений этих таблиц:
+select NAME, STUDENT.IDGROUP from STUDENT left outer join GROUPS
+on STUDENT.IDGROUP=GROUPS.IDGROUP
+union							-- для объединения результирующего набора данных нескольких запросов, и данный оператор выводит только уникальные строки в запросах
+select NAME, STUDENT.IDGROUP from STUDENT right outer join GROUPS
+on STUDENT.IDGROUP=GROUPS.IDGROUP
+except
+(select NAME, STUDENT.IDGROUP from STUDENT full outer join GROUPS
+on STUDENT.IDGROUP=GROUPS.IDGROUP);
+
+
+--включает соединение INNER JOIN этих таблиц:
+select NAME, BDAY from STUDENT inner join GROUPS G on STUDENT.IDGROUP = G.IDGROUP
+ except							-- возвращает строки из левого входного запроса, которых нет в правом входном запросе
+(select NAME, BDAY from STUDENT full outer join GROUPS G  on STUDENT.IDGROUP = G.IDGROUP);
 
 
 --9
@@ -131,7 +148,6 @@ SELECT AUDITORIUM.AUDITORIUM, AUDITORIUM_TYPE.AUDITORIUM_TYPENAME
 select AUDITORIUM.AUDITORIUM, AUDITORIUM_TYPE.AUDITORIUM_TYPE
 from AUDITORIUM cross join AUDITORIUM_TYPE 
 where AUDITORIUM.AUDITORIUM_TYPE = AUDITORIUM_TYPE.AUDITORIUM_TYPE;
-
 
 
 --11
@@ -173,16 +189,19 @@ values
 ('вт', 3, 'УРБ', '324-1', 'ПИС', 4),
 ('вт', 4, 'СМЛВ', '206-1', 'ОАиП', 3);
 
--- ex 1: наличие свободных аудиторий на определенную пару
-select AUDITORIUM as 'Аудитория, свободные на 1 паре в пн'
+
+--1: наличие свободных аудиторий на определенную пару
+select AUDITORIUM as 'Аудитории, свободные на 1 паре в пн'
 from AUDITORIUM a
-except 
+except					--Возвращает все различные значения, возвращенные запросом, указанным слева от оператора
+						--эти значения возвращаются, если они отсутствуют в результатах выполнения правого запроса
 	(select a.AUDITORIUM
 	from TIMETABLE T1, AUDITORIUM a
 	where T1.DAY_NAME = 'пн' and T1.LESSON = 1 and a.AUDITORIUM = T1.AUDITORIUM)
 order by AUDITORIUM asc
 
--- ex 2: на определенный день недели
+
+--2: на определенный день недели
 select AUDITORIUM as 'Аудитории, свободные в пн'
 from AUDITORIUM a
 except 
@@ -191,31 +210,32 @@ except
 	where T1.DAY_NAME = 'пн' and a.AUDITORIUM = T1.AUDITORIUM)
 order by AUDITORIUM asc
 
--- ex3: наличие «окон» у преподавателей
-select distinct T.TEACHER_NAME as 'Преподаватель', T1.DAY_NAME as 'День недели', T1.LESSON as 'Занятая пара'
-from TEACHER T, TIMETABLE T1, TIMETABLE T2
-where T.TEACHER = T1.TEACHER and T1.DAY_NAME = T2.DAY_NAME and T1.LESSON != T2.LESSON
-order by T.TEACHER_NAME asc, T1.DAY_NAME desc, T1.LESSON asc
 
-select distinct T.TEACHER_NAME as 'Преподаватель', T1.DAY_NAME as 'День недели', T1.LESSON as '"окна"'
-from TEACHER T, TIMETABLE T1, TIMETABLE T2
-except 
-	(select distinct T.TEACHER_NAME, T1.DAY_NAME, T1.LESSON
-	from TEACHER T, TIMETABLE T1, TIMETABLE T2
-	where T.TEACHER = T1.TEACHER and T1.DAY_NAME = T2.DAY_NAME and T1.LESSON != T2.LESSON)
-order by T.TEACHER_NAME asc, T1.DAY_NAME desc, T1.LESSON asc
+select * from TIMETABLE;
+--3: наличие «окон» у преподавателей
+select distinct TEACHER_NAME, DAY_NAME, case
+           when ( count(*)= 0) then 4
+           when ( count(*)= 1) then 3
+           when ( count(*)= 2) then 2
+           when ( count(*)= 3) then 1
+           when ( count(*)= 4) then 0
+           end [Кол-во окон]
+from  TEACHER inner join dbo.TIMETABLE T 
+on TEACHER.TEACHER = T.TEACHER
+group by TEACHER_NAME, DAY_NAME				-- Группирует результаты инструкции SELECT в соответствии со значениями в списке одного или нескольких выражений столбцов
+order by TEACHER_NAME
 
 
--- ex 4: окна у групп
-select distinct GROUPS.IDGROUP as 'Группа', T1.DAY_NAME as 'День недели', T1.LESSON as 'Занятая пара'
-from GROUPS, TIMETABLE T1, TIMETABLE T2
-where GROUPS.IDGROUP = T1.IDGROUP and T1.DAY_NAME = T2.DAY_NAME and T1.LESSON != T2.LESSON
-order by GROUPS.IDGROUP asc, T1.DAY_NAME desc, T1.LESSON asc
-
-select distinct GROUPS.IDGROUP as 'Группа', T1.DAY_NAME as 'День недели', T1.LESSON as '"окна"'
-from GROUPS, TIMETABLE T1, TIMETABLE T2
-except
-	(select distinct GROUPS.IDGROUP, T1.DAY_NAME, T1.LESSON
-	from GROUPS, TIMETABLE T1, TIMETABLE T2
-	where GROUPS.IDGROUP = T1.IDGROUP and T1.DAY_NAME = T2.DAY_NAME and T1.LESSON != T2.LESSON)
-order by GROUPS.IDGROUP asc, T1.DAY_NAME desc, T1.LESSON asc
+--4: окна у групп
+select * from TIMETABLE;
+select distinct GROUPS.IDGROUP, DAY_NAME, case
+           when ( count(*)= 0) then 4		-- с помощью функции count найдется количество записей в группе
+           when ( count(*)= 1) then 3
+           when ( count(*)= 2) then 2
+           when ( count(*)= 3) then 1
+           when ( count(*)= 4) then 0
+           end [Кол-во окон]
+from  GROUPS inner join dbo.TIMETABLE T 
+on GROUPS.IDGROUP = T.IDGROUP
+group by GROUPS.IDGROUP, DAY_NAME
+order by GROUPS.IDGROUP asc, [Кол-во окон] asc;
