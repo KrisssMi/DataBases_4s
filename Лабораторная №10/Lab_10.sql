@@ -29,6 +29,13 @@ declare @pul nvarchar(10), @fac nvarchar(4);
 open Puls;
 	fetch Puls into @pul, @fac;
     print rtrim(@pul)+' на факультете >  '+ @fac;
+	go
+
+	--будет ошибка
+	DECLARE @pul nvarchar(10), @fac nvarchar(4);     	
+	fetch Puls into @pul, @fac; 	
+    print rtrim(@pul)+' на факультете >  '+ @fac;
+	go
 
 -- пример использования глобального курсора:
 declare Puls cursor GLOBAL for select PULPIT, FACULTY from PULPIT;
@@ -56,9 +63,10 @@ deallocate Puls;        -- освобождает память от курсора
 -- отличие статических курсоров от динамических:
 
 declare @pul char(10), @gen char(2), @name char(30);
-declare Teachers cursor LOCAL dynamic for select PULPIT, GENDER, TEACHER_NAME from TEACHER where PULPIT='ИСиТ';
+declare Teachers cursor LOCAL static for select PULPIT, GENDER, TEACHER_NAME from TEACHER where PULPIT='ИСиТ';
 open Teachers;
 print 'Количество строк: '+cast(@@CURSOR_ROWS as varchar(5));
+
 insert into TEACHER values ('КВД', 'Владислав', 'м', 'ИСиТ');
 		update TEACHER set TEACHER_NAME = 'Кириленко Владислав Дмитриевич' where TEACHER = 'КВД';
 fetch Teachers into @pul, @gen, @name;
@@ -103,6 +111,7 @@ close Primer4;
 
 insert into FACULTY (FACULTY, FACULTY_NAME)
 values ('Test', 'testing current of');
+
 
 declare EX_5_CURRENT cursor local scroll dynamic for select FACULTY, FACULTY_NAME from FACULTY for update;
 declare @fac varchar(5), @full varchar(50);
